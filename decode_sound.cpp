@@ -155,7 +155,7 @@ ALuint loadAST(const string& filepath)
     ifstream infile(filepath, ios::binary);
     if (!infile.is_open()) {
         string temp = filepath;
-        for (int i = 0; i < filepath.size(); ++i) {
+        for (size_t i = 0; i < filepath.size(); ++i) {
         	temp[i] = tolower(filepath[i]);
         }
 
@@ -207,7 +207,7 @@ vector<VH2map> loadVH2(const string& filepath)
     ifstream infile(filepath, ios::binary | ios::ate);
     if (!infile.is_open()) {
         string temp = filepath;
-        for (int i = 0; i < filepath.size(); ++i) {
+        for (size_t i = 0; i < filepath.size(); ++i) {
         	temp[i] = tolower(filepath[i]);
         }
 
@@ -248,7 +248,7 @@ vector<ALuint> loadVB2(const string& filepath)
     ifstream infile(filepath, ios::binary | ios::ate);
     if (!infile.is_open()) {
         string temp = filepath;
-        for (int i = 0; i < filepath.size(); ++i) {
+        for (size_t i = 0; i < filepath.size(); ++i) {
         	temp[i] = tolower(filepath[i]);
         }
 

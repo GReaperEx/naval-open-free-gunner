@@ -287,7 +287,7 @@ bool playMOVIE(const std::string& relPath)
     ifstream infile(filePath, ios::binary);
     if (!infile.is_open()) {
         string temp = filePath;
-        for (int i = 0; i < filePath.size(); ++i) {
+        for (size_t i = 0; i < filePath.size(); ++i) {
         	temp[i] = tolower(filePath[i]);
         }
 
@@ -363,6 +363,14 @@ bool playMOVIE(const std::string& relPath)
         case STATE_INVALID_END:
             size = 0;
 	    break;
+	    case STATE_SEQUENCE_REPEATED:
+        case STATE_GOP:
+        case STATE_PICTURE:
+        case STATE_SLICE_1ST:
+        case STATE_PICTURE_2ND:
+        case STATE_INVALID:
+        case STATE_SEQUENCE_MODIFIED:
+        break;
         }
 
         SDL_Event event;
