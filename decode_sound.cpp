@@ -1,6 +1,7 @@
 #include "decode_sound.h"
 
 #include <climits>
+#include <cctype>
 #include <fstream>
 #include <iostream>
 #include <iomanip>
@@ -153,8 +154,16 @@ ALuint loadAST(const string& filepath)
 {
     ifstream infile(filepath, ios::binary);
     if (!infile.is_open()) {
-        cout << "Can't open file!" << endl;
-        return 0;
+        string temp = filepath;
+        for (int i = 0; i < filepath.size(); ++i) {
+        	temp[i] = tolower(filepath[i]);
+        }
+
+        infile.open(temp, ios::binary);
+        if (!infile.is_open()) {
+            cout << "Can't open file!" << endl;
+            return 0;
+        }
     }
 
     ASTfileHeader header;
@@ -197,8 +206,16 @@ vector<VH2map> loadVH2(const string& filepath)
 
     ifstream infile(filepath, ios::binary | ios::ate);
     if (!infile.is_open()) {
-        cout << "Can't open file!" << endl;
-        return blockMap;
+        string temp = filepath;
+        for (int i = 0; i < filepath.size(); ++i) {
+        	temp[i] = tolower(filepath[i]);
+        }
+
+        infile.open(temp, ios::binary);
+        if (!infile.is_open()) {
+            cout << "Can't open file!" << endl;
+            return blockMap;
+        }
     }
 
     size_t fileSize = infile.tellg();
@@ -230,8 +247,16 @@ vector<ALuint> loadVB2(const string& filepath)
 
     ifstream infile(filepath, ios::binary | ios::ate);
     if (!infile.is_open()) {
-        cout << "Can't open file!" << endl;
-        return alBuffers;
+        string temp = filepath;
+        for (int i = 0; i < filepath.size(); ++i) {
+        	temp[i] = tolower(filepath[i]);
+        }
+
+        infile.open(temp, ios::binary);
+        if (!infile.is_open()) {
+            cout << "Can't open file!" << endl;
+            return alBuffers;
+        }
     }
 
     size_t fileSize = infile.tellg();

@@ -286,8 +286,16 @@ bool playMOVIE(const std::string& relPath)
 
     ifstream infile(filePath, ios::binary);
     if (!infile.is_open()) {
-        cerr << "Unable to open file!" << endl;
-        return false;
+        string temp = filePath;
+        for (int i = 0; i < filePath.size(); ++i) {
+        	temp[i] = tolower(filePath[i]);
+        }
+
+        infile.open(temp, ios::binary);
+        if (!infile.is_open()) {
+            cout << "Can't open file!" << endl;
+            return false;
+        }
     }
 
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
