@@ -2,8 +2,12 @@
 
 #include "decode_sound.h"
 #include "pack_mpeg2.h"
+#include "VCD_input.h"
+#include "utils.h"
 
 #include <iostream>
+#include <sstream>
+#include <iomanip>
 
 #include <SDL2/SDL.h>
 
@@ -13,8 +17,8 @@
 #include <GL/gl.h>
 
 extern "C" {
-#include "mpeg2dec/mpeg2.h"
-#include "mpeg2dec/mpeg2convert.h"
+#include <mpeg2dec/mpeg2.h>
+#include <mpeg2dec/mpeg2convert.h>
 }
 
 using namespace std;
@@ -569,4 +573,226 @@ bool _playLocal(const std::string& relPath, int)
     _playSE(filePath);
 
     return true;
+}
+
+void _calcSizes(VCD_FileTree* leaf, size_t& real, size_t& block);
+
+void browseK2(const std::string& relPath)
+{
+    string filePath = relPath;
+    if (!filePath.empty() && filePath.back() != '/') {
+        filePath += "/";
+    }
+    filePath += "K2.VCD";
+
+    VCD_fs* fs = VCD_open(filePath);
+    if (!fs) {
+        return;
+    }
+
+    cout << '\n';
+    string curDir = "/";
+
+    for (;;) {
+        string input;
+        setTermForeColor(COLOR_BRIGHT_GREEN);
+        cout << "K2.VCD" << curDir;
+        setTermForeColor(COLOR_BRIGHT_WHITE);
+        cout << "$ ";
+        getline(cin, input);
+
+        stringstream inputStream(input);
+
+        string cmd;
+        inputStream >> cmd;
+
+        if (cmd == "cd") {
+            string path;
+            if (inputStream >> path) {
+                if (path == "../") {
+                    if (curDir != "/") {
+                        curDir.pop_back();
+                        while (curDir.back() != '/') {
+                            curDir.pop_back();
+                        }
+                    }
+                } else {
+                    string tempPath = curDir + path;
+                    VCD_FileTree* dir = VCD_getDirEntry(tempPath, fs);
+                    if (dir) {
+                        if (VCD_isDir(dir)) {
+                            curDir = tempPath;
+                            if (curDir.back() != '/') {
+                                curDir += "/";
+                            }
+                        } else {
+                            cout << "Error: That is a file, not a directory." << endl;
+                        }
+                    } else {
+                        cout << "Error: Directory doesn't exist." << endl;
+                    }
+                }
+            } else {
+                curDir = "/";
+            }
+        } else if (cmd == "ls") {
+            string path;
+            bool details = false;
+
+            if (inputStream >> path && path == "-l") {
+                details = true;
+                if (!(inputStream >> path)) {
+                    path = "";
+                }
+            }
+
+            path = curDir + path;
+            if (path.back() != '/') {
+                path += "/";
+            }
+
+            VCD_FileTree* entry = VCD_getDirEntry(path, fs);
+            if (!entry) {
+                cout << "Error: Doesn't exist." << endl;
+            } else if (VCD_isDir(entry)) {
+                int linePos = 0;
+                for (VCD_FileTree* leaf : entry->leafs) {
+                    int len = strlen(leaf->info.fileName);
+                    if (linePos + len >= 80) {
+                        cout << endl;
+                        linePos = 0;
+                    }
+                    linePos += len;
+                    linePos += 8 - linePos % 8;
+
+                    if (VCD_isDir(leaf)) {
+                        if (details) {
+                            cout << setw(11) << 48
+                                 << setw(11) << 48;
+                            setTermForeColor(COLOR_BRIGHT_BLUE);
+                            cout << ' ' << leaf->info.fileName << endl;
+                            setTermForeColor(COLOR_BRIGHT_WHITE);
+                            linePos = 0;
+                        } else {
+                            setTermForeColor(COLOR_BRIGHT_BLUE);
+                            cout << leaf->info.fileName << '\t';
+                            setTermForeColor(COLOR_BRIGHT_WHITE);
+                        }
+                    } else {
+                        if (details) {
+                            cout << setw(11) << leaf->info.fileRealSize
+                                 << setw(11) << leaf->info.fileFsSize
+                                  << ' ' << leaf->info.fileName << endl;
+                            linePos = 0;
+                        } else {
+                            cout << leaf->info.fileName << '\t';
+                        }
+                    }
+                }
+                if (!details) {
+                    cout << endl;
+                }
+            } else {
+                if (details) {
+                    cout << setw(11) << entry->info.fileRealSize
+                         << setw(11) << entry->info.fileFsSize
+                         << ' ' << entry->info.fileName << endl;
+                } else {
+                    cout << entry->info.fileName << endl;
+                }
+            }
+        } else if (cmd == "du") {
+            string option;
+            inputStream >> option;
+
+            size_t realSize, fsSize;
+
+            realSize = fsSize = 0;
+            _calcSizes(VCD_getDirEntry(curDir, fs), realSize, fsSize);
+
+            if (option == "-h") {
+                string suffix = "B";
+                double size = realSize;
+                if (realSize > 1024*1024) {
+                    size /= 1024*1024;
+                    suffix = "MiB";
+                } else if (realSize > 1024) {
+                    size /= 1024;
+                    suffix = "KiB";
+                }
+                cout << fixed << setprecision(2) << size << ' ' << suffix;
+
+                suffix = "B";
+                size = fsSize;
+                if (fsSize > 1024*1024) {
+                    size /= 1024*1024;
+                    suffix = "MiB";
+                } else if (fsSize > 1024) {
+                    size /= 1024;
+                    suffix = "KiB";
+                }
+                cout << ", " << fixed << setprecision(2) << size << ' ' << suffix << endl;
+            } else {
+                cout << realSize << '\t' << fsSize << endl;
+            }
+        } else if (cmd == "more") {
+            string path;
+            inputStream >> path;
+
+            vector<uint8_t> buffer;
+            VCD_FileTree* leaf = VCD_getDirEntry(curDir + path, fs);
+            if (!leaf) {
+                cout << "Error: File doesn't exist." << endl;
+            } else if (VCD_isDir(leaf)) {
+                cout << "Error: That's a directory, not a file." << endl;
+            } else if (VCD_inputFile(buffer, leaf, fs)) {
+                int linesLeft = 23;
+                for (size_t i = 0; i < buffer.size(); ++i) {
+                    if (buffer[i] != '\r') {
+                        if (buffer[i] == '\n') {
+                            if (linesLeft <= 0) {
+                                getline(cin, path);
+                            } else {
+                                --linesLeft;
+                                cout << '\n';
+                            }
+                        } else {
+                            cout.put((char)buffer[i]);
+                        }
+                    }
+                }
+            } else {
+                cout << "Error: Unable to read file." << endl;
+            }
+        } else if (cmd == "help") {
+            cout << "\tThis mode includes simplified versions of cd, ls, du and more in order\n"
+                    "\tto help you browse the file system at least somewhat decently. Previous\n"
+                    "\tdirectory \"../\" isn't supported, and works only by itself only with cd.\n"
+                    "\t\tcd [path]      : \"cd -\" not supported. Relative paths only\n"
+                    "\t\tls [-l] [path]\n"
+                    "\t\tdu [-h]        : Prints current directory total size\n"
+                    "\t\tmore file      : Works with [Enter] only, a line each time\n"
+                    "\t\texit or quit\n";
+        } else if (cmd == "exit" || cmd == "quit") {
+            break;
+        } else {
+            if (!cmd.empty()) {
+                cout << "\tError: Invalid command." << endl;
+            }
+        }
+    }
+
+    VCD_close(fs);
+}
+
+void _calcSizes(VCD_FileTree* leaf, size_t& real, size_t& block)
+{
+    if (VCD_isDir(leaf)) {
+        for (auto l : leaf->leafs) {
+            _calcSizes(l, real, block);
+        }
+    } else {
+        real += leaf->info.fileRealSize;
+        block += leaf->info.fileFsSize;
+    }
 }

@@ -7,4 +7,6 @@ bool playBGM(const std::string& relPath);
 bool playSE(const std::string& relPath);
 bool playMOVIE(const std::string& relPath);
 
+void browseK2(const std::string& relPath);
+
 #endif // MODES_H
