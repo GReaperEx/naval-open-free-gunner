@@ -4,6 +4,7 @@
 #include "pack_mpeg2.h"
 #include "VCD_input.h"
 #include "utils.h"
+#include "pak_unpack.h"
 
 #include <iostream>
 #include <sstream>
@@ -766,6 +767,13 @@ void browseK2(const std::string& relPath)
             } else {
                 cout << "Error: Unable to read file." << endl;
             }
+        } else if (cmd == "unpk") {
+            string path;
+            inputStream >> path;
+
+            if (!pak_unpack(curDir + path, fs)) {
+                cout << "Error: Unable to unpack \"" << path << "\"." << endl;
+            }
         } else if (cmd == "help") {
             cout << "\tThis mode includes simplified versions of cd, ls, du and more in order\n"
                     "\tto help you browse the file system at least somewhat decently. Previous\n"
@@ -774,6 +782,7 @@ void browseK2(const std::string& relPath)
                     "\t\tls [-l] [path]\n"
                     "\t\tdu [-h]        : Prints current directory total size\n"
                     "\t\tmore file      : Works with [Enter] only, a line each time\n"
+                    "\t\tunpk file      : Converts a *.pak file into a directory\n"
                     "\t\texit or quit\n";
         } else if (cmd == "exit" || cmd == "quit") {
             break;
