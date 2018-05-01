@@ -682,8 +682,8 @@ void browseK2(const std::string& relPath)
                         }
                     } else {
                         if (details) {
-                            cout << setw(11) << leaf->info.fileRealSize
-                                 << setw(11) << leaf->info.fileFsSize
+                            cout << setw(11) << leaf->info.file.fileRealSize
+                                 << setw(11) << leaf->info.file.fileFsSize
                                   << ' ' << leaf->info.fileName << endl;
                             linePos = 0;
                         } else {
@@ -696,8 +696,8 @@ void browseK2(const std::string& relPath)
                 }
             } else {
                 if (details) {
-                    cout << setw(11) << entry->info.fileRealSize
-                         << setw(11) << entry->info.fileFsSize
+                    cout << setw(11) << entry->info.file.fileRealSize
+                         << setw(11) << entry->info.file.fileFsSize
                          << ' ' << entry->info.fileName << endl;
                 } else {
                     cout << entry->info.fileName << endl;
@@ -794,7 +794,7 @@ void _calcSizes(VCD_FileTree* leaf, size_t& real, size_t& block)
             _calcSizes(l, real, block);
         }
     } else {
-        real += leaf->info.fileRealSize;
-        block += leaf->info.fileFsSize;
+        real += leaf->info.file.fileRealSize;
+        block += leaf->info.file.fileFsSize;
     }
 }

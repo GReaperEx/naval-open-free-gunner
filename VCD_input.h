@@ -9,12 +9,19 @@ struct VCD_FileInfo
 {
     char fileName[32];
     union {
-        uint32_t fileRealSize;
-        uint32_t dirEntries;
+        struct {
+            uint32_t fileRealSize;
+            uint32_t fileFsSize;
+            uint32_t fileBytePos;
+            uint32_t resv;
+        } file;
+        struct {
+            uint32_t dirEntries;
+            uint32_t entriesDwordPos;
+            uint32_t dirSubdirs;
+            uint32_t subsDwordPos;
+        } dir;
     };
-    uint32_t fileFsSize;
-    uint32_t fileBytePos;
-    uint32_t resv2;
 };
 
 struct VCD_FileTree
