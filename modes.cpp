@@ -8,6 +8,7 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>
+#include <limits>
 
 #include <SDL2/SDL.h>
 
@@ -41,7 +42,9 @@ bool playBGM(const std::string& relPath)
     }
     filePath += to_string(answer) + ".AST";
 
-    cout << "Loading: " << filePath << endl << endl;
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+    cout << "Loading: " << filePath << endl;
 
     ALCdevice *dev;
     ALCcontext *ctx;
@@ -68,14 +71,9 @@ bool playBGM(const std::string& relPath)
     alSourceQueueBuffers(source, 1, &soundBuffer);
     alSourcePlay(source);
 
-    for (;;) {
-        ALint state;
-        alGetSourcei(source, AL_SOURCE_STATE, &state);
-        if (state > 0 && state != AL_PLAYING) {
-            break;
-        }
-        SDL_Delay(250);
-    }
+    cout << "Music playing... Press enter to continue." << endl;
+    string temp;
+    getline(cin, temp);
 
     alDeleteSources(1, &source);
 
@@ -96,7 +94,7 @@ void _playSE(const std::string& relPath)
 {
     string filePath = relPath + ".VB2";
 
-    cout << "Loading: " << filePath << endl << endl;
+    cout << "Loading: " << filePath << endl;
 
     ALCdevice *dev;
     ALCcontext *ctx;
@@ -125,19 +123,17 @@ void _playSE(const std::string& relPath)
 
     alSourcei(source, AL_BUFFER, soundBuffer[soundIndex++]);
     alSourcePlay(source);
+    cout << "Sound effect playing... Press enter to continue." << endl;
+    string temp;
+    getline(cin, temp);
 
-    for (;;) {
-        ALint state;
-        alGetSourcei(source, AL_SOURCE_STATE, &state);
-        if (state > 0 && state != AL_PLAYING) {
-            if (soundBuffer.size() <= soundIndex) {
-                break;
-            }
+    for (; soundIndex < soundBuffer.size(); ++soundIndex) {
+        alSourcei(source, AL_BUFFER, soundBuffer[soundIndex]);
+        alSourcePlay(source);
 
-            alSourcei(source, AL_BUFFER, soundBuffer[soundIndex++]);
-            alSourcePlay(source);
-        }
-        SDL_Delay(250);
+        cout << "Sound effect playing... Press enter to continue." << endl;
+        string temp;
+        getline(cin, temp);
     }
 
     alDeleteBuffers(soundBuffer.size(), &soundBuffer[0]);
@@ -234,6 +230,7 @@ bool playMOVIE(const std::string& relPath)
     if (!(cin >> answer) || answer < 1 || answer > 4) {
         return false;
     }
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
     string windowName;
 
@@ -258,7 +255,7 @@ bool playMOVIE(const std::string& relPath)
     }
     filePath += ".PSS";
 
-    cout << "Loading: " << filePath << endl << endl;
+    cout << "Loading: " << filePath << endl;
 
     ALCdevice *dev;
     ALCcontext *ctx;
@@ -412,6 +409,7 @@ bool _playBR(const std::string& relPath, int answer)
     if (!(cin >> answer2) || answer2 < 1 || answer2 > 10) {
         return false;
     }
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
     answer2 += (answer - 1)*10;
     if (answer2 < 10) {
@@ -435,6 +433,7 @@ bool _playINTER(const std::string& relPath, int)
     }
     filePath += to_string(answer2);
 
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
     _playSE(filePath);
 
     return true;
@@ -488,6 +487,7 @@ bool _playREP(const std::string& relPath, int answer)
         break;
     }
 
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
     _playSE(filePath);
 
     return true;
@@ -541,6 +541,7 @@ bool _playTV(const std::string& relPath, int answer)
         break;
     }
 
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
     _playSE(filePath);
 
     return true;
@@ -556,6 +557,7 @@ bool _playLocal(const std::string& relPath, int)
     if (!(cin >> answer2) || answer2 < 1 || answer2 > 4) {
         return false;
     }
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
     switch (answer2)
     {
