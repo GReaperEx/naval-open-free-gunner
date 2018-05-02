@@ -4,7 +4,6 @@
 #include "pack_mpeg2.h"
 #include "VCD_input.h"
 #include "utils.h"
-#include "pak_unpack.h"
 
 #include <iostream>
 #include <sstream>
@@ -578,7 +577,7 @@ bool _playLocal(const std::string& relPath, int)
     return true;
 }
 
-void _calcSizes(VCD_FileTree* leaf, size_t& real, size_t& block);
+void _calcSizes(const VCD_fs::DirEntry* leaf, size_t& real, size_t& block);
 
 void browseK2(const std::string& relPath)
 {
@@ -588,8 +587,8 @@ void browseK2(const std::string& relPath)
     }
     filePath += "K2.VCD";
 
-    VCD_fs* fs = VCD_open(filePath);
-    if (!fs) {
+    VCD_fs fs(filePath);
+    if (!fs.isMounted()) {
         return;
     }
 
@@ -621,9 +620,9 @@ void browseK2(const std::string& relPath)
                     }
                 } else {
                     string tempPath = curDir + path;
-                    VCD_FileTree* dir = VCD_getDirEntry(tempPath, fs);
+                    VCD_fs::DirEntry* dir = fs.getDirEntry(tempPath);
                     if (dir) {
-                        if (VCD_isDir(dir)) {
+                        if (dir->isDir()) {
                             curDir = tempPath;
                             if (curDir.back() != '/') {
                                 curDir += "/";
@@ -654,41 +653,43 @@ void browseK2(const std::string& relPath)
                 path += "/";
             }
 
-            VCD_FileTree* entry = VCD_getDirEntry(path, fs);
+            VCD_fs::DirEntry* entry = fs.getDirEntry(path);
             if (!entry) {
                 cout << "Error: Doesn't exist." << endl;
-            } else if (VCD_isDir(entry)) {
+            } else if (entry->isDir()) {
                 int linePos = 0;
-                for (VCD_FileTree* leaf : entry->leafs) {
-                    int len = strlen(leaf->info.fileName);
-                    if (linePos + len >= 80) {
+                vector<const VCD_fs::DirEntry*> subs;
+                entry->getAllSubs(subs);
+
+                for (auto leaf : subs) {
+                    if (linePos + leaf->getName().size() >= 80) {
                         cout << endl;
                         linePos = 0;
                     }
-                    linePos += len;
+                    linePos += leaf->getName().size();
                     linePos += 8 - linePos % 8;
 
-                    if (VCD_isDir(leaf)) {
+                    if (leaf->isDir()) {
                         if (details) {
                             cout << setw(11) << 48
                                  << setw(11) << 48;
                             setTermForeColor(COLOR_BRIGHT_BLUE);
-                            cout << ' ' << leaf->info.fileName << endl;
+                            cout << ' ' << leaf->getName() << endl;
                             setTermForeColor(COLOR_BRIGHT_WHITE);
                             linePos = 0;
                         } else {
                             setTermForeColor(COLOR_BRIGHT_BLUE);
-                            cout << leaf->info.fileName << '\t';
+                            cout << leaf->getName() << '\t';
                             setTermForeColor(COLOR_BRIGHT_WHITE);
                         }
                     } else {
                         if (details) {
-                            cout << setw(11) << leaf->info.file.fileRealSize
-                                 << setw(11) << leaf->info.file.fileFsSize
-                                  << ' ' << leaf->info.fileName << endl;
+                            cout << setw(11) << leaf->getFileInfo().fileRealSize
+                                 << setw(11) << leaf->getFileInfo().fileFsSize
+                                  << ' ' << leaf->getName() << endl;
                             linePos = 0;
                         } else {
-                            cout << leaf->info.fileName << '\t';
+                            cout << leaf->getName() << '\t';
                         }
                     }
                 }
@@ -697,11 +698,11 @@ void browseK2(const std::string& relPath)
                 }
             } else {
                 if (details) {
-                    cout << setw(11) << entry->info.file.fileRealSize
-                         << setw(11) << entry->info.file.fileFsSize
-                         << ' ' << entry->info.fileName << endl;
+                    cout << setw(11) << entry->getFileInfo().fileRealSize
+                         << setw(11) << entry->getFileInfo().fileFsSize
+                         << ' ' << entry->getName() << endl;
                 } else {
-                    cout << entry->info.fileName << endl;
+                    cout << entry->getName() << endl;
                 }
             }
         } else if (cmd == "du") {
@@ -711,7 +712,7 @@ void browseK2(const std::string& relPath)
             size_t realSize, fsSize;
 
             realSize = fsSize = 0;
-            _calcSizes(VCD_getDirEntry(curDir, fs), realSize, fsSize);
+            _calcSizes(fs.getDirEntry(curDir), realSize, fsSize);
 
             if (option == "-h") {
                 string suffix = "B";
@@ -742,36 +743,44 @@ void browseK2(const std::string& relPath)
             string path;
             inputStream >> path;
 
-            vector<uint8_t> buffer;
-            VCD_FileTree* leaf = VCD_getDirEntry(curDir + path, fs);
+            VCD_fs::DirEntry* leaf = fs.getDirEntry(curDir + path);
             if (!leaf) {
                 cout << "Error: File doesn't exist." << endl;
-            } else if (VCD_isDir(leaf)) {
+            } else if (leaf->isDir()) {
                 cout << "Error: That's a directory, not a file." << endl;
-            } else if (VCD_inputFile(buffer, leaf, fs)) {
-                int linesLeft = 23;
-                for (size_t i = 0; i < buffer.size(); ++i) {
-                    if (buffer[i] != '\r') {
-                        if (buffer[i] == '\n') {
-                            if (linesLeft <= 0) {
-                                getline(cin, path);
-                            } else {
-                                --linesLeft;
-                                cout << '\n';
+            } else {
+                VCD_fs::File infile = fs.openFile(*leaf);
+                if (infile.isOpen()) {
+                    int linesLeft = 23;
+                    size_t bytesRead;
+                    vector<uint8_t> buffer;
+                    buffer.resize(4096);
+
+                    while ((bytesRead = infile.read(&buffer[0], buffer.size())) != 0) {
+                        for (size_t i = 0; i < bytesRead; ++i) {
+                            if (buffer[i] != '\r') {
+                                if (buffer[i] == '\n') {
+                                    if (linesLeft <= 0) {
+                                        getline(cin, path);
+                                    } else {
+                                        --linesLeft;
+                                        cout << '\n';
+                                    }
+                                } else {
+                                    cout.put((char)buffer[i]);
+                                }
                             }
-                        } else {
-                            cout.put((char)buffer[i]);
                         }
                     }
+                } else {
+                    cerr << "Error: Unable to read file." << endl;
                 }
-            } else {
-                cout << "Error: Unable to read file." << endl;
             }
         } else if (cmd == "unpk") {
             string path;
             inputStream >> path;
 
-            if (!pak_unpack(curDir + path, fs)) {
+            if (!fs.unpackFile(curDir + path)) {
                 cout << "Error: Unable to unpack \"" << path << "\"." << endl;
             }
         } else if (cmd == "help") {
@@ -792,18 +801,19 @@ void browseK2(const std::string& relPath)
             }
         }
     }
-
-    VCD_close(fs);
 }
 
-void _calcSizes(VCD_FileTree* leaf, size_t& real, size_t& block)
+void _calcSizes(const VCD_fs::DirEntry* leaf, size_t& real, size_t& block)
 {
-    if (VCD_isDir(leaf)) {
-        for (auto l : leaf->leafs) {
+    if (leaf->isDir()) {
+        vector<const VCD_fs::DirEntry*> subs;
+        leaf->getAllSubs(subs);
+
+        for (auto l : subs) {
             _calcSizes(l, real, block);
         }
     } else {
-        real += leaf->info.file.fileRealSize;
-        block += leaf->info.file.fileFsSize;
+        real += leaf->getFileInfo().fileRealSize;
+        block += leaf->getFileInfo().fileFsSize;
     }
 }
