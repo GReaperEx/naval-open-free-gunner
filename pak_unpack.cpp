@@ -24,13 +24,17 @@ struct pakEntry
 
 bool pak_unpack(const string& pakFile, VCD_fs* fs)
 {
-    VCD_FileTree* pakLeaf = VCD_getDirEntry(pakFile, fs);
-    if (VCD_isDir(pakLeaf)) {
+    return pak_unpack(VCD_getDirEntry(pakFile, fs), fs);
+}
+
+bool pak_unpack(VCD_FileTree* leaf, VCD_fs* fs)
+{
+    if (VCD_isDir(leaf)) {
         return false;
     }
 
     vector<uint8_t> buffer;
-    if (!VCD_inputFile(buffer, pakLeaf, fs)) {
+    if (!VCD_inputFile(buffer, leaf, fs)) {
         return false;
     }
     if (buffer.size() < 16) {
@@ -48,18 +52,18 @@ bool pak_unpack(const string& pakFile, VCD_fs* fs)
         newLeaf->isDir = false;
 
         strcpy(newLeaf->info.fileName, entry.entryName);
-        newLeaf->info.file.fileBytePos = entry.fileByteOffset + pakLeaf->info.file.fileBytePos;
+        newLeaf->info.file.fileBytePos = entry.fileByteOffset + leaf->info.file.fileBytePos;
         newLeaf->info.file.fileRealSize = entry.fileRealSize;
         newLeaf->info.file.fileFsSize = entry.filePackSize;
 
-        pakLeaf->leafs.push_back(newLeaf);
+        leaf->leafs.push_back(newLeaf);
     }
 
-    pakLeaf->info.dir.dirEntries = pakLeaf->leafs.size();
-    pakLeaf->info.dir.entriesDwordPos = 0xFFFFFFFF;
-    pakLeaf->info.dir.dirSubdirs = 0;
-    pakLeaf->info.dir.subsDwordPos = 0xFFFFFFFF;
-    pakLeaf->isDir = true;
+    leaf->info.dir.dirEntries = leaf->leafs.size();
+    leaf->info.dir.entriesDwordPos = 0xFFFFFFFF;
+    leaf->info.dir.dirSubdirs = 0;
+    leaf->info.dir.subsDwordPos = 0xFFFFFFFF;
+    leaf->isDir = true;
 
     return true;
 }
