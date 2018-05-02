@@ -43,6 +43,7 @@ VCD_fs* VCD_open(const std::string& filePath)
         cerr << "File \"" << filePath << "\" appears to be corrupted. First entry must be a directory." << endl;
         return nullptr;
     }
+    root->isDir = true;
 
     if (!parseDir(fs->imageFile, *root)) {
         _deleteDir(root);
@@ -58,6 +59,7 @@ bool parseDir(ifstream& infile, VCD_FileTree& curDir)
     infile.seekg(curDir.info.dir.entriesDwordPos*4, ios::beg);
     for (uint32_t i = 0; i < curDir.info.dir.dirEntries; ++i) {
         VCD_FileTree* newLeaf = new VCD_FileTree;
+        newLeaf->isDir = false;
         if (!infile.read((char*)&(newLeaf->info), sizeof(newLeaf->info))) {
             return false;
         }
@@ -69,6 +71,7 @@ bool parseDir(ifstream& infile, VCD_FileTree& curDir)
     infile.seekg(curDir.info.dir.subsDwordPos*4, ios::beg);
     for (uint32_t i = 0; i < curDir.info.dir.dirSubdirs; ++i) {
         VCD_FileTree* newLeaf = new VCD_FileTree;
+        newLeaf->isDir = true;
         if (!infile.read((char*)&(newLeaf->info), sizeof(newLeaf->info))) {
             return false;
         }
@@ -105,7 +108,7 @@ void _deleteDir(VCD_FileTree* leaf)
 
 bool VCD_isDir(const VCD_FileTree* leaf)
 {
-    return strchr(leaf->info.fileName, '.') == nullptr;
+    return leaf && leaf->isDir;
 }
 
 VCD_FileTree* VCD_getDirEntry(const std::string& filePath, VCD_fs* fs)

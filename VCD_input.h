@@ -28,6 +28,7 @@ struct VCD_FileTree
 {
     VCD_FileInfo info;
 
+    bool isDir;
     std::vector<VCD_FileTree*> leafs;
 };
 

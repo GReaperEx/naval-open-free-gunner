@@ -25,7 +25,7 @@ struct pakEntry
 bool pak_unpack(const string& pakFile, VCD_fs* fs)
 {
     VCD_FileTree* pakLeaf = VCD_getDirEntry(pakFile, fs);
-    if (!pakLeaf || VCD_isDir(pakLeaf)) {
+    if (VCD_isDir(pakLeaf)) {
         return false;
     }
 
@@ -45,6 +45,7 @@ bool pak_unpack(const string& pakFile, VCD_fs* fs)
     for (unsigned i = 0; i < header.entriesCount; ++i) {
         pakEntry entry = ((pakEntry*)&buffer[16])[i];
         VCD_FileTree* newLeaf = new VCD_FileTree;
+        newLeaf->isDir = false;
 
         strcpy(newLeaf->info.fileName, entry.entryName);
         newLeaf->info.file.fileBytePos = entry.fileByteOffset + pakLeaf->info.file.fileBytePos;
@@ -54,15 +55,11 @@ bool pak_unpack(const string& pakFile, VCD_fs* fs)
         pakLeaf->leafs.push_back(newLeaf);
     }
 
-    char *ptr;
-    while ((ptr = strchr(pakLeaf->info.fileName, '.')) != nullptr) {
-        *ptr = '_';
-    }
-
     pakLeaf->info.dir.dirEntries = pakLeaf->leafs.size();
     pakLeaf->info.dir.entriesDwordPos = 0xFFFFFFFF;
     pakLeaf->info.dir.dirSubdirs = 0;
     pakLeaf->info.dir.subsDwordPos = 0xFFFFFFFF;
+    pakLeaf->isDir = true;
 
     return true;
 }
