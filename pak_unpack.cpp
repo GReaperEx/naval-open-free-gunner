@@ -16,11 +16,21 @@ struct pakFileHeader
 struct pakEntry
 {
     char entryName[32];
-    uint32_t _resv;
+    uint32_t mode;          // Bit0: 1
     uint32_t fileRealSize;
     uint32_t filePackSize;
     uint32_t fileByteOffset;
 };
+
+struct pakEntryRev
+{
+    uint32_t mode;          // Bit0: 0
+    uint32_t fileRealSize;
+    uint32_t filePackSize;
+    uint32_t fileByteOffset;
+    char entryName[32];
+};
+
 
 bool pak_unpack(const string& pakFile, VCD_fs* fs)
 {
@@ -51,12 +61,25 @@ bool pak_unpack(VCD_FileTree* leaf, VCD_fs* fs)
         VCD_FileTree* newLeaf = new VCD_FileTree;
         newLeaf->isDir = false;
 
-        strcpy(newLeaf->info.fileName, entry.entryName);
-        newLeaf->info.file.fileBytePos = entry.fileByteOffset + leaf->info.file.fileBytePos;
-        newLeaf->info.file.fileRealSize = entry.fileRealSize;
-        newLeaf->info.file.fileFsSize = entry.filePackSize;
+        if ((entry.mode & 0x1) == 0) {
+            pakEntryRev revEntry = ((pakEntryRev*)&buffer[48])[i];
 
-        leaf->leafs.push_back(newLeaf);
+            strcpy(newLeaf->info.fileName, revEntry.entryName);
+            newLeaf->info.file.fileBytePos = revEntry.fileByteOffset + leaf->info.file.fileBytePos;
+            newLeaf->info.file.fileRealSize = revEntry.fileRealSize;
+            newLeaf->info.file.fileFsSize = revEntry.filePackSize;
+        } else {
+            strcpy(newLeaf->info.fileName, entry.entryName);
+            newLeaf->info.file.fileBytePos = entry.fileByteOffset + leaf->info.file.fileBytePos;
+            newLeaf->info.file.fileRealSize = entry.fileRealSize;
+            newLeaf->info.file.fileFsSize = entry.filePackSize;
+        }
+
+        if (strcmp(newLeaf->info.fileName, "none") != 0) {
+            leaf->leafs.push_back(newLeaf);
+        } else {
+            delete newLeaf;
+        }
     }
 
     leaf->info.dir.dirEntries = leaf->leafs.size();
