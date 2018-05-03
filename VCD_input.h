@@ -134,7 +134,7 @@ public:
         return mounted;
     }
 
-    File openFile(DirEntry& entry);
+    File openFile(const DirEntry& entry);
     File openFile(const std::string& internalPath);
     DirEntry* getDirEntry(const std::string& internalPath);
 

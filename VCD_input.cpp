@@ -184,7 +184,7 @@ void VCD_fs::unmount()
     }
 }
 
-VCD_fs::File VCD_fs::openFile(DirEntry& entry)
+VCD_fs::File VCD_fs::openFile(const DirEntry& entry)
 {
     File newFile(imageFile);
     newFile.open(entry, dirTableEnd);
@@ -334,7 +334,7 @@ bool VCD_fs::unpackFile(DirEntry& leaf)
 
             data[0] = revEntry.fileRealSize;
             data[1] = revEntry.filePackSize;
-            data[2] = revEntry.fileByteOffset + leaf.data.file.fileBytePos;
+            data[2] = revEntry.fileByteOffset + leaf.data.file.fileBytePos + 256;
             data[3] = 0;
 
             newLeaf = new VCD_fs::DirEntry(revEntry.entryName, false, data);
