@@ -138,9 +138,6 @@ public:
     File openFile(const std::string& internalPath);
     DirEntry* getDirEntry(const std::string& internalPath);
 
-    bool unpackFile(DirEntry& entry);
-    bool unpackFile(const std::string& internalPath);
-
 private:
     bool parse(DirEntry& curDir);
 
